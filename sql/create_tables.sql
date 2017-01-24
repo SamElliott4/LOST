@@ -7,7 +7,7 @@ CREATE TABLE products(
 
 CREATE TABLE assets(
 	asset_pk serial primary key,
-	product_fk integer REFERENCES products (product_pk) not null,
+	product_fk integer REFERENCES products (product_pk),
 	asset_tag varchar(16),
 	description varchar(50),
 	alt_description varchar(50) 
@@ -37,8 +37,8 @@ CREATE TABLE convoys(
 	request varchar(50),
 	source_fk integer REFERENCES facilities (facility_pk) not null,
 	dest_fk integer REFERENCES facilities (facility_pk) not null,
-	depart_dt integer,
-	arrive_dt integer
+	depart_dt timestamp,
+	arrive_dt timestamp
 );
 
 CREATE TABLE used_by(
