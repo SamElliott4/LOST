@@ -1,0 +1,36 @@
+<!doctype=html>
+<html lang=en>
+	{% include 'header.html' %}
+	<head>
+		<a href={{session['logout_url']}}>Logout</a>
+	<style>
+	table#t1 {width:100%;}
+	table#t1 tr:nth-child(even) { background-color:#ddd;}
+	table#t1 tr:nth-child(odd) { background-color:#fff;}
+	</style>
+	</head>
+	<br><br>
+	<a href={{session['report_url']}}>Run another query</a>
+	<br>
+	<table id="t1">
+		<tr>
+			<th>Facility Code</th>
+			<th>Facility Name</th>
+			<th>Asset Tag</th>
+			<th>Description</th>
+			<th>Intake Date</th>
+			<th>Expunge Date</th>
+		</tr>
+		{% for i in session['fac_data'] %}
+		<tr>
+			<td>{{i[0]}}</td>
+			<td>{{i[1]}}</td>
+			<td>{{i[2]}}</td>
+			<td>{{i[3]}}</td>
+			<td>{{i[4]}}</td>
+			<td>{{i[5]}}</td>
+		</tr>
+		{% endfor %}
+	</table>
+
+</html>
