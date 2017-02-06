@@ -1,4 +1,4 @@
-from flask import Flask, url_for, request, render_template, flash, redirect, session
+from flask import Flask, url_for, request, render_template, redirect, session
 import psycopg2
 app = Flask(__name__)
 app.secret_key = 'flimsy key'
