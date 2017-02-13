@@ -1,0 +1,69 @@
+<html>
+<head>
+	<h1>LOST API interface overview</h1>
+</head>
+<body>
+	<p><strong>lost_key</strong><br>
+	Returns the LOST public key for encryption of other requests<br>
+	<a href="/rest/lost_key">example</a><br>
+	<b>Request:</b><br>
+	No input needed, but arguments and signature fields must be present for the request<br>
+	<b>Response:</b><br>
+	<b>result</b> 'OK' or 'FAIL'<br>
+	<b>key</b> LOST public key<br>
+	</p>
+
+	<p><strong>activate_user</strong><br>
+	Reinstates LOST access for an existing user, or creates a new user account if non exists.<br>
+	<a href="/rest/activate_user">example</a><br>
+	<b>Request:</b> <br>
+	<b>username</b> OSNAP username to activate<br>
+	<b>Response:</b> <br>
+	<b>result</b> 'OK' or 'FAIL'<br>
+	</p>
+
+	<p><strong>suspend_user</strong><br>
+	Revoke access for  user.<br>
+	This will have no effect if the user does not exist, or access has already been revoked.<br>
+	<a href="/rest/suspend_user">example</a><br>
+	<b>Request:</b> <br>
+	<b>username</b> OSNAP username to suspend<br>
+	<b>Response:</b> <br>
+	<b>result</b> 'OK' or 'FAIL'<br>
+	</p>
+
+	<p><strong>list_products</strong><br>
+	Returns a listing of LOST products based on filter criteria.<br>
+	<a href="/rest/list_products">example</a><br>
+	<b>Request:</b> <br>
+	<b>vendor</b> Case-insensitive vendor name<br>
+	<b>description</b> Case-insensitive description of product<br>
+	<b>compartments</b> Secutiry tags as json array; must match for compartment and level<br>
+	<b>Response:</b> <br>
+	<b>listing</b> A json list of matching product information<br>
+	</p>
+
+	<p><strong>add_products</strong><br>
+	Adds products to LOST. Requests are atomic (i.e. either all new products are added or none are.)<br>
+	Attempting to add a duplicate product will cause the request to fail.<br>
+	<a href="/rest/add_products">example</a><br>
+	<b>Request:</b> <br>
+	<b>new_products</b> A json list describing the new products<br>
+	<b>Response:</b> <br>
+	<b>result</b> 'OK' or 'FAIL'<br>
+	</p>
+
+	<p><strong>add_asset</strong><br>
+	Add a new asset to LOST<br>
+	<a href="/rest/add_asset">example</a><br>
+	<b>Request:</b> <br>
+	<b>vendor</b> Vendor of the product<br>
+	<b>description</b> Description of the asset <br>
+	<b>compartments</b> A json list of additional compartments the asset should be listed under <br>
+	<b>facility</b> Facility code the asset is located at <br>
+	<b>Response:</b> <br>
+	<b>result</b> 'OK' or 'FAIL'<br>
+	</p>
+	
+</body>
+</html>

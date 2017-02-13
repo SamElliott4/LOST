@@ -1,13 +1,183 @@
 from flask import Flask, url_for, request, render_template, redirect, session
 import psycopg2
+import json
+import datetime
 app = Flask(__name__)
 app.secret_key = 'flimsy key'
 from config import database, host, port
 db = psycopg2.connect(dbname=database, host=host, port=port)
 cur = db.cursor()
 
-cur.execute("SELECT * FROM assets")
-value = cur.fetchone()[0]
+################################################################
+# Code for Assignment 5
+#
+# Visiting the addresses in a browset will perform a GET request
+# Which will return an API stub with example arguments filled in
+# (Built as dict ex in most functions)
+#
+# navigating to the addresses with a POST request will(would) 
+# make the API call
+
+@app.route('/rest', methods=['GET', 'POST'])
+def welcome():
+    session['example'] = ''
+    return render_template('api_info.html', name=None)
+
+@app.route('/rest/lost_key', methods=['POST','GET'])
+def lost_key():
+    if request.method=='POST':
+        data = {}
+        data['timestamp'] = datetime.datetime.utcnow().isoformat()
+        data['key'] = 'OpenSesame'
+        data['result'] = 'OK'
+        return json.dumps(data)
+    return render_template('api_stub.html')
+
+@app.route('/rest/activate_user', methods=['POST','GET'])
+def activate_user():
+    if request.method=='POST' and 'arguments' in request.form:
+        req=json.loads(request.form['arguments'])
+        data = {}
+        data['timestamp'] = req['timestamp']
+        data['result'] = 'OK'
+        return json.dumps(data)
+    ex = {'timestamp': datetime.datetime.utcnow().isoformat(),
+            'username': 'Wilson'
+    }
+    session['example'] = json.dumps(ex)
+    return render_template('api_stub.html')
+
+@app.route('/rest/suspend_user', methods=['POST','GET'])
+def suspend_user():
+    if request.method=='POST' and 'arguments' in request.form:
+        req=json.loads(request.form['arguments'])
+        data = {}
+        data['timestamp'] = req['timestamp']
+        data['result'] = 'OK'
+        return json.dumps(data)
+    ex = {'timestamp': datetime.datetime.utcnow().isoformat(),
+            'username': 'Hodor'
+    }
+    session['example'] = json.dumps(ex)
+    return render_template('api_stub.html')
+
+@app.route('/rest/list_products', methods=['POST','GET'])
+def list_products():
+    if request.method=='POST' and 'arguments' in request.form:
+        req=json.loads(request.form['arguments'])
+        data = {}
+        data['timestamp'] = req['timestamp']
+        data['listing'] = [
+                {
+                    'vendor': 'Dunder Mifflin',
+                    'description': 'LOST legal size notepad',
+                    'compartments': ''
+                },
+                {
+                    'vendor': 'big n large',
+                    'description': 'LOST legal size notepad',
+                    'compartments': ''
+                }
+        ]
+        return json.dumps(data)
+    ex = {'timestamp': datetime.datetime.utcnow().isoformat(),
+            'vendor': '',
+            'description': 'notepad',
+            'compartments': []
+    }
+    session['example'] = json.dumps(ex)
+    return render_template('api_stub.html')
+
+@app.route('/rest/suspend_user', methods=['POST','GET'])
+def suspend_user():
+    if request.method=='POST' and 'arguments' in request.form:
+        req=json.loads(request.form['arguments'])
+        data = {}
+        data['timestamp'] = req['timestamp']
+        data['result'] = 'OK'
+        return json.dumps(data)
+    ex = {'timestamp': datetime.datetime.utcnow().isoformat(),
+            'username': 'Hodor'
+    }
+    session['example'] = json.dumps(ex)
+    return render_template('api_stub.html')
+
+@app.route('/rest/list_products', methods=['POST','GET'])
+def list_products():
+    if request.method=='POST' and 'arguments' in request.form:
+        req=json.loads(request.form['arguments'])
+        data = {}
+        data['timestamp'] = req['timestamp']
+        data['listing'] = [
+                {
+                    'vendor': 'Dunder Mifflin',
+                    'description': 'LOST legal size notepad',
+                    'compartments': ''
+                },
+                {
+                    'vendor': 'big n large',
+                    'description': 'LOST legal size notepad',
+                    'compartments': ''
+                }
+        ]
+        return json.dumps(data)
+    ex = {'timestamp': datetime.datetime.utcnow().isoformat(),
+            'vendor': '',
+            'description': 'notepad',
+            'compartments': []
+    }
+    session['example'] = json.dumps(ex)
+    return render_template('api_stub.html')
+
+@app.route('/rest/add_products', methods=['POST','GET'])
+def add_products():
+    if request.method=='POST' and 'arguments' in request.form:
+        req=json.loads(request.form['arguments'])
+        data = {}
+        data['timestamp'] = req['timestamp']
+        data['result'] = 'OK'
+        return json.dumps(data)
+    ex = {
+        'timestamp': datetime.datetime.utcnow().isoformat(),
+        'new_products': [
+            {
+                'vendor': 'Dunder Mifflin',
+                'description': 'LOST letter size notepad',
+                'alt_description': "Children's storybook",
+                'compartments': ['adm:s']
+            },
+            {
+                'vendor': 'Stark Industries',
+                'description': 'Micronized Arc Reactor',
+                'alt_description': 'Baseball',
+                'compartments': ['nrg:ts', 'wpn:s']
+
+            }
+        ]
+    }
+    session['example'] = json.dumps(ex)
+    return render_template('api_stub.html')
+
+@app.route('/rest/add_asset', methods=['POST','GET'])
+def add_asset():
+    if request.method=='POST' and 'arguments' in request.form:
+        req=json.loads(request.form['arguments'])
+        data = {}
+        data['timestamp'] = req['timestamp']
+        data['result'] = 'OK'
+        return json.dumps(data)
+    ex = {
+            'timestamp': datetime.datetime.utcnow().isoformat(),
+            'vendor': 'Dunder Mifflin',
+            'description': 'LOST letter size notepad',
+            'compartments': ['wpn:ts'],
+            'facility': 'HQ'
+        }
+    session['example'] = json.dumps(ex)
+    return render_template('api_stub.html')
+
+
+###Code for assignment 3
 
 @app.route('/', methods=['GET', 'POST'])
 def login():
@@ -15,7 +185,7 @@ def login():
     session['logout_url'] = url_for('logout')
     return render_template('login.html', name=None)
 
-@app.route('/report', methods=['GET', 'POST'])
+@app.route('/report', methods=['GET', 'POST',])
 def report_filter():
     session['facility_url'] = url_for('facility_report')
     session['transit_url'] = url_for('transit_report')
