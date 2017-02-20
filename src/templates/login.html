@@ -1,0 +1,19 @@
+<html lang=en>
+{% include 'header.html' %}
+
+<body>
+	<fieldset>
+		<legend>Login</legend>
+		<form action="" method="post">
+			<label>Username: </label>
+			<input type="text" name="username" required><br>
+			<label>Password: </label>
+			<input type="password" name="password" required><br>
+			<input type="submit" value="Log in"><br>
+		</form>
+	</fieldset>
+
+	<a>Don't have a username? Create one </a><a href="{{url_for('create_user')}}">here</a>
+</body>
+
+</html>

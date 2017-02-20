@@ -5,7 +5,7 @@ fi
 
 	# Database prep
 cd sql
-bash ./import_data.sh $1 5432
+psql $1 < create_tables.sql
 cd ..
 
 # Install the files for the LOST web service

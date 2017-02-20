@@ -1,0 +1,37 @@
+<html>
+<head>
+<style>
+
+ul {
+	list-style-type: none;
+	margin: 0;
+	padding: 0;
+	overflow: hidden;
+	background-color: #ddd
+}
+
+li {
+	float: left;
+}
+
+li a {
+	display: block;
+	color: #333;
+	text-align: center;
+	padding: 10px 15px;
+	text-decoration: none;
+}
+
+button {padding: 10px;}
+
+</style>
+</head>
+	<body>
+		<ul>
+			<li><a>Welcome, {{session['username']}}</a></li>
+			<form action="{{url_for('logout')}}" method="GET"><button style="float:right" class="btn navbar-btn" href="{{url_for('logout')}}">Log out</button></form>
+		</ul>
+
+	</body>
+
+</html>

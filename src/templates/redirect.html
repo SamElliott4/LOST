@@ -1,0 +1,12 @@
+<html lang=en>
+	<head>
+		<meta http-equiv="refresh" content="3;url={{session['destination']}}" />
+		<p> {{session['message']}} </p>
+	</head>
+
+	<body>
+		<p> Redirecting in 3 seconds... </p>
+		or <a href={{session['destination']}}>{{session['link_text']}}</a>
+	</body>
+
+</html>
