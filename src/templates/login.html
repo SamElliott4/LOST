@@ -1,19 +1,21 @@
 <html lang=en>
+{% include 'styles.html' %}
 {% include 'header.html' %}
+{% include 'alert.html' %}
 
-<body>
-	<fieldset>
-		<legend>Login</legend>
-		<form action="" method="post">
+<body class=base>
+	<fieldset style=background:#ddd>
+		<a><b>Login</b></a>
+		<form action="" method="post" style=padding-top:8px>
 			<label>Username: </label>
 			<input type="text" name="username" required><br>
 			<label>Password: </label>
 			<input type="password" name="password" required><br>
-			<input type="submit" value="Log in"><br>
+			<input type="submit" value="Log in">
 		</form>
 	</fieldset>
 
-	<a>Don't have a username? Create one </a><a href="{{url_for('create_user')}}">here</a>
+	<a href="{{url_for('create_user')}}">Create User</a>
 </body>
 
 </html>

@@ -1,0 +1,49 @@
+<html lang=en>
+
+{% include 'styles.html' %}
+<style>
+.container{width: 648px;}
+
+.report{width:648px}
+
+.input{width: 640px;}
+
+</style>
+
+{% include "header.html" %}
+
+{% include "alert.html" %}
+
+<body class=base>
+<div>
+	<a id=dashbtn href={{url_for('dashboard')}}>Return to Dashboard</a><br>
+	<div class=container>
+		<b style="font-size:30px">Existing Facilities</b>
+		<table class=report>
+			<tr>
+				<th>Facility Code</th>
+				<th>Facility Name</th>
+			</tr>
+			{% for fac in session['facilities'] %}
+			<tr>
+				<td>{{fac[0]}}</td>
+				<td>{{fac[1]}}</td>
+			</tr>
+			{% endfor %}
+		</table>
+	</div><br>
+	<div class=input>
+		<form method="POST">
+			<label>Facility Code: </label>
+			<input type=text name="fcode"/>  
+			<label>Facility Name: </label>
+			<input type=text name="name"/>  
+			<input type=submit value="Add Facility"/>
+		</form>
+	</div>
+</div>
+</body>
+
+
+
+</html>

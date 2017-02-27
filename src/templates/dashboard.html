@@ -1,4 +1,5 @@
 <html>
+{% include 'styles.html' %}
 <head>
 <style>
 
@@ -14,6 +15,14 @@ li {
 	float: left;
 }
 
+li p {
+	display: block;
+	color: #333;
+	text-align: center;
+	padding: 10px 15px;
+	text-decoration: none;
+}
+
 li a {
 	display: block;
 	color: #333;
@@ -22,16 +31,31 @@ li a {
 	text-decoration: none;
 }
 
+li .link:hover {
+	background-color: #fff;
+}
+
+
 button {padding: 10px;}
 
 </style>
 </head>
-	<body>
+
+{% include "header.html" %}
+	<body class=base>
+		<div style="border-top:2px solid black; border-bottom:2px solid #444">
 		<ul>
 			<li><a>Welcome, {{session['username']}}</a></li>
+			<li><a></a></li>
+			{% for c in session['tasks'] %}
+			<li><a class="link" href={{c[1]}}>{{c[0]}}</a></li>
+			{% endfor %}
+			<li><a class="link" href={{url_for('asset_report')}}>asset report</a></li>
 			<form action="{{url_for('logout')}}" method="GET"><button style="float:right" class="btn navbar-btn" href="{{url_for('logout')}}">Log out</button></form>
 		</ul>
+		</div>
 
 	</body>
+	{% include 'alert.html' %}
 
 </html>

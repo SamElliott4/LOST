@@ -1,16 +1,21 @@
 <html>
+{% include 'styles.html' %}
 {% include 'header.html' %}
+{% include 'alert.html' %}
 
-<body>
-	<fieldset>
-		<legend>Create User</legend>
-		<form action="" method="post">
+<body class=base>
+	<fieldset style=background:#ddd>
+		<a><b>Create User</b></a>
+		<form action="" method="post" style=padding-top:8px>
 			<label>Username: </label>
-			<input type="text" name="username" required><br>
+			<input type="text" name="username" required>  
+			<select name="role">
+				{% for role in session['roles'] %}
+				<option>{{role[0]}}</option>
+				{% endfor %}
+			</select> <br>
 			<label>Password: </label>
 			<input type="password" name="password" required><br>
-			<label>Confirm Password:</label>
-			<input type="password" name="password2" required><br>
 			<input type="submit"><br>
 		</form>
 	</fieldset>

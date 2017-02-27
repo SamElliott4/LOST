@@ -1,0 +1,38 @@
+<html lang=en>
+<head>
+<style>
+.alert{
+	width: 80%;
+	padding: 10px;
+}
+.closebtn {
+	margin-left: 15px;
+	font-weight: bold;
+	float: left;
+	font-size: 22px;
+	line-height: 20px;
+	transition: 0.2s;
+	cursor: default;
+	padding-right: 30px;
+}
+.closebtn:hover{
+	color: #eee;
+}
+
+</style>
+</head>
+<body>
+	{% with messages = get_flashed_messages() %}
+	{% if messages %}
+	{% for message in messages %}
+	<div class=alert style=background-color:{{session['alert']}}>
+		<span class=closebtn onclick="this.parentElement.style.display='none';">&times;</span>
+		{{message}}
+	</div>
+	{% endfor %}
+	{% endif %}
+	{% endwith %}
+</body>
+
+
+<html>
