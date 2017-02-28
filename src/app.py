@@ -116,7 +116,7 @@ def asset_report():
 def dispose_asset():
     verify_user()
     if not has_authority(session['username'], "dispose asset"):
-        send_alert('You do not has authorization to perform this action', 'warning')
+        send_alert('You do not have authorization to perform this action', 'warning')
         return redirect(url_for('dashboard'))
     if request.method=='POST':
         if request.form['date'] != "":
@@ -284,9 +284,9 @@ def filter_assets(fcode, date):
 
 def verify_user():
     # Kicks back to login page if no user is logged in
+    #TODO Lies, all lies. It doesn't do that at all
     if 'username' not in session:
-        flash('you are not logged in')
-        session['alert'] = ALERT['warning']
+        send_alert('You are not logged in', 'warning')
         return redirect(url_for('login'))
     return
 
@@ -308,7 +308,7 @@ def has_authority(username, action):
     return False
 
 def populate_dashboard():
-    if not session['username']:
+    if username not in session:
         return
     # set users role
     username = session['username']
