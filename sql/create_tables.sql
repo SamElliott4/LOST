@@ -45,3 +45,23 @@ CREATE TABLE asset_at(
 	expunge_date timestamp -- time of assets removal from associated facility
 );
 
+CREATE TABLE transfer_requests(
+	request_id varchar(16) UNIQUE,
+	requester varchar(16) references users(user_id),
+	request_time timestamp,
+	src integer references facilities(facility_pk),
+	dest integer references facilities(facility_pk),
+	asset_fk integer references assets(asset_pk),
+	approver varchar(16) references users(user_id),
+	approve_time timestamp,
+	status integer -- 0: pending, 1: approved, -1: rejected
+);
+
+CREATE TABLE asset_moving(
+	request_id varchar(16) references transfer_requests(request_id),
+	asset_fk integer references assets(asset_pk),
+	src integer references facilities(facility_pk),
+	dest integer references facilities(facility_pk),
+	load_time timestamp,
+	unload_time timestamp
+);

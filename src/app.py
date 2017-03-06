@@ -12,9 +12,6 @@ app.secret_key = 'the secret key is "secret key"'
 db = psycopg2.connect(dbname=database, host=host, port=port)
 cur = db.cursor()
 
-# global variables
-ALERT = {'warning':'#F88080', 'success':'#80F880'}
-
 
 ############################
 # web application structure
@@ -47,14 +44,18 @@ def create_user():
 
 @app.route('/dashboard', methods=['GET'])
 def dashboard():
-    verify_user()
+    if not verify_user():
+        send_alert('You are not logged in', 'warning')
+        return redirect(url_for('login'))
     populate_dashboard()
     return render_template('dashboard.html')
 
 @app.route('/add_facility', methods=['GET', 'POST'])
 def add_facility():
-    verify_user()
-    if not has_authority(session['username'], 'add facility'):
+    if not verify_user():
+        send_alert('You are not logged in', 'warning')
+        return redirect(url_for('login'))
+    if not has_authority(session['username'], 'Add Facility'):
         send_alert('You do not have authorization to perform this action', 'warning')
         return redirect(url_for('dashboard'))
     if request.method == 'POST':
@@ -69,8 +70,10 @@ def add_facility():
 
 @app.route('/add_asset', methods=['GET', 'POST'])
 def add_asset():
-    verify_user()
-    if not has_authority(session['username'], "add asset"):
+    if not verify_user():
+        send_alert('You are not logged in', 'warning')
+        return redirect(url_for('login'))
+    if not has_authority(session['username'], "Add Asset"):
         send_alert('You do not have authorization to perform this action', 'warning')
         return redirect(url_for('dashboard'))
     if request.method == 'POST':
@@ -96,7 +99,9 @@ def add_asset():
 
 @app.route('/asset_report', methods=['GET', 'POST'])
 def asset_report():
-    verify_user()
+    if not verify_user():
+        send_alert('You are not logged in', 'warning')
+        return redirect(url_for('login'))
     if request.method == 'POST':
         if request.form['date'] != "":
             dt = convert_date(request.form['date'])
@@ -114,8 +119,10 @@ def asset_report():
 
 @app.route('/dispose_asset', methods=['GET', 'POST'])
 def dispose_asset():
-    verify_user()
-    if not has_authority(session['username'], "dispose asset"):
+    if not verify_user():
+        send_alert('You are not logged in', 'warning')
+        return redirect(url_for('login'))
+    if not has_authority(session['username'], "Dispose Asset"):
         send_alert('You do not have authorization to perform this action', 'warning')
         return redirect(url_for('dashboard'))
     if request.method=='POST':
@@ -132,12 +139,107 @@ def dispose_asset():
         else:
             send_alert('Failed to dispose asset', 'warning')
         return redirect(url_for('dispose_asset'))
-    # Build Asset table
+    # build asset table
     session['assets'] = get_assets()
     # get facilities available for new asset form
     cur.execute("SELECT f_code FROM facilities;")
     session['facilities'] = [f[0] for f in cur.fetchall()] 
     return render_template('dispose_asset.html')
+
+@app.route('/transfer_req', methods=['GET', 'POST'])
+def transfer_req():
+    if not verify_user():
+        send_alert('You are not logged in', 'warning')
+        return redirect(url_for('login'))
+    if not has_authority(session['username'], 'Transfer Request'):
+        send_alert('You do not have authorization to perform this action', 'warning')
+        return redirect(url_for('dashboard'))
+    if request.method == 'POST':
+        if make_transfer_request(session['username'], request.form['asset_tag'], request.form['dest'], datetime.datetime.utcnow().isoformat()):
+            send_alert('Created new transfer request', 'success')
+        else:
+            send_alert('Unable to submit transfer request', 'warning')
+        return redirect(url_for('transfer_req'))
+    session['assets'] = get_assets()
+    for i in range(len(session['assets'])):
+        if session['assets'][i][5] != 'Active':
+            print("hit")
+            session['assets'][i] = None
+    while None in session['assets']:
+        session['assets'].remove(None)
+    cur.execute("SELECT f_code FROM facilities;")
+    session['facilities'] = [f[0] for f in cur.fetchall()]
+    return render_template('transfer_request.html')
+
+@app.route('/approve_req', methods=['GET', 'POST'])
+def approve_req():
+    if not verify_user():
+        send_alert('You are not logged in', 'warning')
+        return redirect(url_for('login'))
+    if not has_authority(session['username'], "Approve Transfer"):
+        send_alert('You do not have authorization to perform this action', 'warning')
+        return redirect(url_for('dashboard'))
+    if request.method == 'POST':
+        if request.form['action'] == 'Approve':
+            if approve_transfer_request(session['req_id'], session['username'], datetime.datetime.utcnow().isoformat()):
+                send_alert('Transfer request approved', 'success')
+                for r in session['conflicts']:
+                    reject_transfer_request(r[0], session['username'], datetime.datetime.utcnow().isoformat());
+            else:
+                send_alert('Unable to approve request', 'warning')
+        elif request.form['action'] == 'Reject':
+            if reject_transfer_request(session['req_id'], session['username'], datetime.datetime.utcnow().isoformat()):
+                send_alert('Transfer request rejected', 'success')
+            else:
+                send_alert('Unable to reject transfer request', 'warning')
+        return redirect(url_for('dashboard'))
+    session['req_id'] = request.args.get('req_id', '')
+    # get info for approval form
+    session['req'] = get_request_info(session['req_id'])
+    # get conflicting request info
+    session['conflicts'] = []
+    cur.execute("""SELECT request_id FROM transfer_requests
+            JOIN assets on asset_fk=asset_pk
+            WHERE asset_tag=%s AND request_id!=%s AND approver IS NULL;""", (session['req'][1], session['req_id']))
+    for r in cur.fetchall():
+        session['conflicts'].append(get_request_info(r[0]))
+    return render_template('approve_req.html')
+
+@app.route('/update_transit', methods=['GET', 'POST'])
+def update_transit():
+    if not verify_user():
+        send_alert('You are not logged in', 'warning')
+        return redirect(url_for('login'))
+    if not has_authority(session['username'], 'Update Transit'):
+        send_alert('You do not have authorization to perform this action', 'warning')
+        return redirect(url_for('dashboard'))
+    if request.method == 'POST':
+        if 'load_time' in request.form:
+            load_dt = convert_date(request.form['load_time']) if len(request.form['load_time']) > 0 else datetime.datetime.utcnow().isoformat()
+            if update_transit(session['req_id'], load_time=load_dt):
+                send_alert('Updated tracking information', 'success')
+            else:
+                send_alert('Unable to update tracking information', 'warning')
+        if 'unload_time' in request.form:
+            unload_dt = convert_date(request.form['unload_time']) if len(request.form['unload_time']) > 0 else datetime.datetime.utcnow().isoformat()
+            if update_transit(session['req_id'], unload_time=unload_dt):
+                send_alert('Updated tracking information', 'success')
+            else:
+                send_alert('Unable to update tracking information', 'warning')
+        return redirect(url_for('dashboard'))
+    session['req_id'] = request.args.get('req_id', '')
+    session['transit'] = get_transfer_info(session['req_id'])
+    return render_template('update_transit.html')
+
+@app.route('/transfer_report', methods=['GET', 'POST'])
+def transfer_report():
+    #TODO
+    if not verify_user():
+        send_alert('You are not logged in', 'warning')
+        return redirect(url_for('login'))
+    if request.method == 'POST':
+        pass
+    return render_tamplate('transfer_report.html')
 
 @app.route('/logout', methods=['GET'])
 def logout():
@@ -195,7 +297,6 @@ def add_facility(fcode, common_name):
     db.commit()
     return True
 
-
 def add_asset(asset_tag, description, fcode, date):
     # atomically add a new asset (e.g. if insertion into asset_at fails, nothing is added to asset table)
     # aborts and returns False if any insertion fails, True otherwise
@@ -203,9 +304,7 @@ def add_asset(asset_tag, description, fcode, date):
         # New row in assets table; new assets are automatically assumed to be active
         cur.execute("INSERT INTO assets (asset_tag, description, status) VALUES (%s, %s, 1);", (asset_tag, description))
         # get asset_pk and facility_pk
-        #cur.execute("SELECT asset_pk FROM assets WHERE asset_tag=%s;", (asset_tag,))
         asset_key = get_key('assets', 'asset_tag', asset_tag) #cur.fetchone()[0]
-        #cur.execute("SELECT facility_pk FROM facilities WHERE f_code=%s;", (fcode,))
         fac_key = get_key('facilities', 'f_code', fcode) #cur.fetchone()[0]
         # New row in asset_at table
         cur.execute("""INSERT INTO asset_at (asset_fk, facility_fk, intake_date) 
@@ -225,8 +324,6 @@ def dispose_asset(asset_tag, datetime):
         assert(cur.fetchone()[0] == 1)
         # Get asset_pk
         asset_key = get_key('assets', 'asset_tag', asset_tag)
-        #cur.execute("SELECT asset_pk FROM assets WHERE asset_tag=%s;", (asset_tag,))
-        #asset_key = cur.fetchone()[0]
         # Update necessary information
         # Facility information needs to remain intact for historical reference
         cur.execute("UPDATE assets SET status=0 WHERE asset_tag=%s;", (asset_tag,))
@@ -237,28 +334,104 @@ def dispose_asset(asset_tag, datetime):
     db.commit()
     return True
 
+def make_transfer_request(username, asset_tag, destination, date):
+    cur.execute("SELECT user_id FROM users WHERE username=%s;", (username,))
+    user = cur.fetchone()[0]
+    cur.execute("""SELECT facility_pk, f_code FROM facilities 
+            JOIN asset_at ON facility_pk=facility_fk 
+            JOIN assets ON asset_fk=asset_pk 
+            WHERE asset_tag=%s AND expunge_date IS NULL;""", (asset_tag,))
+    src, src_code = cur.fetchone()
+    cur.execute("SELECT facility_pk FROM facilities WHERE f_code=%s;", (destination,))
+    dest = cur.fetchone()[0]
+    if src == dest: # No transfer requests to and from same facility
+        return False
+    asset_key = get_key('assets', 'asset_tag', asset_tag)
+    cur.execute("SELECT * FROM transfer_requests;")
+    req_num = len(cur.fetchall()) + 1
+    try:
+        cur.execute("""INSERT INTO transfer_requests (request_id, requester, asset_fk, src, dest, request_time, status) 
+                VALUES (%s, %s, %s, %s, %s, %s, 0);""", (src_code + str(req_num), user, asset_key, src, dest, date))
+    except:
+        db.rollback()
+        return False
+    db.commit()
+    return True
+
+def approve_transfer_request(req_id, username, date):
+    user = get_key('users', 'username', username)
+    cur.execute("SELECT asset_fk, src, dest FROM transfer_requests WHERE request_id=%s;", (req_id,))
+    asset_key, src, dest = cur.fetchone()
+    try:
+        cur.execute("UPDATE transfer_requests SET approver=%s, approve_time=%s, status=1 WHERE request_id=%s;", (user, date, req_id))
+        cur.execute("INSERT INTO asset_moving (request_id, asset_fk, src, dest) VALUES (%s, %s, %s, %s);", (req_id, asset_key, src, dest))
+    except:
+        db.rollback()
+        return False
+    db.commit()
+    return True
+
+def reject_transfer_request(req_id, username, date):
+    user = get_key('users', 'username', username)
+    try:
+        cur.execute("UPDATE transfer_requests SET approver=%s, approve_time=%s, status=-1 WHERE request_id=%s;", (user, date, req_id))
+    except:
+        db.rollback()
+        return False
+    db.commit()
+    return True
+
+def update_transit(req_id, load_time=None, unload_time=None):
+    cur.execute("SELECT asset_fk FROM asset_moving WHERE request_id=%s;", (req_id,))
+    asset_key = cur.fetchone()[0]
+    if load_time is not None:
+        try:
+            cur.execute("UPDATE asset_moving SET load_time=%s WHERE request_id=%s;", (load_time, req_id))
+            cur.execute("UPDATE assets SET status=2 WHERE asset_pk=%s;", (asset_key,))
+            cur.execute("UPDATE asset_at SET expunge_date=%s WHERE asset_fk=%s AND expunge_date IS NULL;", (load_time, asset_key))
+        except:
+            db.rollback()
+            return False
+    if unload_time is not None:
+        cur.execute("SELECT dest FROM asset_moving WHERE request_id=%s;", (req_id,))
+        fac_key = cur.fetchone()[0]
+        try:
+            cur.execute("UPDATE asset_moving SET unload_time=%s WHERE request_id=%s;", (unload_time, req_id))
+            cur.execute("UPDATE assets SET status=1 WHERE asset_pk=%s;", (asset_key,))
+            cur.execute("INSERT INTO asset_at (asset_fk, facility_fk, intake_date) VALUES (%s, %s, %s);", (asset_key, fac_key, unload_time))
+        except:
+            db.rollback()
+            return False
+    db.commit()
+    return True
+
 def get_assets():
     # returns a list of lists of the format [asset_tag, description, fcode, intake_date, expunge_date, status]
-    #TODO merge get_assets and filter_assets
-    cur.execute("""SELECT asset_tag, description, f_code, intake_date, expunge_date, status FROM assets 
-            JOIN asset_at ON asset_pk=asset_fk 
-            JOIN facilities on facility_fk=facility_pk ;""")
-    assets = [[a[0], a[1], a[2], a[3], a[4], a[5]] for a in cur.fetchall()]
+    assets = []
+    cur.execute("SELECT asset_pk FROM assets WHERE status>0;")
+    asset_list = [a[0] for a in cur.fetchall()]
+    for a in asset_list: # We only want one row for each asset
+        cur.execute("""SELECT asset_tag, description, f_code, intake_date, expunge_date, status FROM assets
+                JOIN asset_at ON asset_pk=asset_fk
+                JOIN facilities ON facility_fk=facility_pk
+                WHERE asset_pk=%s;""", (a,))
+        res = cur.fetchall()
+        assets.append(list(sorted(res, key=lambda res: res[3], reverse=True)[0])) # sort by intake date, choose latest entry
     for a in assets:
-        #TODO handle multple asset_at entries for the same asset
         # trim date values
-        if a[3] is not None:
-            a[3] = str(a[3]).split(".")[0]
+        a[3] = str(a[3]).split('.')[0]
         if a[4] is not None:
-            a[4] = str(a[4]).split(".")[0]
+            a[4] = str(a[4]).split('.')[0]
+        # clear facility entry if asset is in transit
+        if a[5] == 2:
             a[2] = ""
         # convert status to text
-        a[5] = "Active" if a[5] == 1 else "Inactive"
+        status = {0: 'Inactive', 1: 'Active', 2: 'In transit'}
+        a[5] = status[a[5]]
     return assets
 
 def filter_assets(fcode, date):
     # returns a list a assets for a given facility on a given date
-
     # Fix date to properly include assets taken in on the selected day
     dt = date.split("T")
     dt = dt[0] + "T23:59:59"
@@ -277,27 +450,26 @@ def filter_assets(fcode, date):
         if a[4] is not None:
             a[4] = str(a[4]).split(".")[0]
         # convert status to text
-        a[5] = "Active" if a[5] == 1 else "Inactive"
+        status = {0: 'Inactive', 1:'Active', 2:'In transit'}
+        a[5] = status[a[5]]
     return assets
 
-    # WHERE intake_date <= date AND (expunge_date is null OR NOT expunge_date < %s)
 
 def verify_user():
-    # Kicks back to login page if no user is logged in
-    #TODO Lies, all lies. It doesn't do that at all
+    # Returns False if no user is logged in, True otherwise
     if 'username' not in session:
-        send_alert('You are not logged in', 'warning')
-        return redirect(url_for('login'))
-    return
+        return False
+    return True
 
 def get_capabilities(username):
+    # returns a list of capability keys corresponding to what a user is authorizaed to do
     cur.execute("""SELECT capability_fk FROM has 
             WHERE role_fk=(SELECT role_fk FROM users WHERE user_id=%s);""",(username.lower(),))
     cap_list = [i[0] for i in cur.fetchall()]
     return cap_list
 
-
 def has_authority(username, action):
+    # returns True if a user is able to perform a given action, False, otherwise
     cur.execute("SELECT capability_pk FROM capabilities WHERE name=%s;",(action,))
     output = cur.fetchone()
     # avoid index error if query returned None
@@ -308,7 +480,7 @@ def has_authority(username, action):
     return False
 
 def populate_dashboard():
-    if username not in session:
+    if 'username' not in session:
         return
     # set users role
     username = session['username']
@@ -318,14 +490,42 @@ def populate_dashboard():
     # build task set
     session['tasks'] = []
     cap_list = get_capabilities(username)
+    capabilities = {  # All capabilities that have links in the dashboard
+            'Add Facility': 'add_facility', 
+            'Add Asset': 'add_asset', 
+            'Dispose Asset': 'dispose_asset', 
+            'Transfer Request': 'transfer_req',
+    }
+    action_items = { # All pending actions that may require user's attention
+            'Approve Transfer': 'approve_req',
+            'Update Transit': 'update_transit'
+    }
+    pending = []
     for i in cap_list:
         # add tuple of (name, route) for each capability
         cur.execute("SELECT name FROM capabilities WHERE capability_pk=%s ;",(i,))
         c = cur.fetchone()[0]
-        session['tasks'].append((c,c.replace(" ", "_")))
+        if c in capabilities:
+            session['tasks'].append((c, capabilities[c]))
+        if c in action_items:
+            pending.append(c)
+    # Items awaiting attention table
+    for a in pending:
+        if a == 'Approve Transfer':
+            session['pending_requests'] = []
+            cur.execute("""SELECT request_id FROM transfer_requests WHERE approver IS NULL;""")
+            for r in cur.fetchall():
+                session['pending_requests'].append(get_request_info(r[0]))
+        if a == 'Update Transit':
+            session['pending_transfers'] = []
+            cur.execute("""SELECT request_id FROM asset_moving
+                    WHERE load_time IS NULL OR unload_time IS NULL""")
+            for r in cur.fetchall():
+                if r[0]:
+                    session['pending_transfers'].append(get_transfer_info(r[0]))
 
 def send_alert(message, color):
-    alerts = {'warning':'#F88080', 'success':'80F880'}
+    alerts = {'warning':'#F88080', 'success':'#80F880'}
     flash(message)
     session['alert'] = alerts[color] if color in alerts.keys() else color
 
@@ -341,6 +541,41 @@ def get_key(table, field, value):
     output = cur.fetchone()
     key = output[0] if output is not None else None
     return key
+
+def get_request_info(req_id):
+    cur.execute("SELECT request_id, asset_fk, src, dest, request_time FROM transfer_requests WHERE request_id=%s;", (req_id,))
+    req = cur.fetchone()
+    cur.execute("SELECT asset_tag, description FROM assets WHERE asset_pk=%s;", (req[1],))
+    asset_tag, description = cur.fetchone()
+    cur.execute("SELECT f_code FROM facilities WHERE facility_pk=%s;", (req[2],))
+    src = cur.fetchone()[0]
+    cur.execute("SELECT f_code FROM facilities WHERE facility_pk=%s;", (req[3],))
+    dest = cur.fetchone()[0]
+    dt = str(req[4]).split(".")
+    return [req[0], asset_tag, description, src, dest, dt[0]]
+
+def get_transfer_info(req_id):
+    cur.execute("SELECT asset_fk, src, dest, load_time, unload_time FROM asset_moving WHERE request_id=%s;", (req_id,))
+    t = cur.fetchone()
+    cur.execute("SELECT asset_tag, description FROM assets WHERE asset_pk=%s;", (t[0],))
+    asset_tag, description = cur.fetchone()
+    cur.execute("SELECT f_code FROM facilities WHERE facility_pk=%s;", (t[1],))
+    src = cur.fetchone()[0]
+    cur.execute("SELECT f_code FROM facilities WHERE facility_pk=%s;", (t[2],))
+    dest = cur.fetchone()[0]
+    # Trim displayed time of anything smaller than seconds
+    load_time = t[3]
+    if load_time is not None:
+        load_time = str(load_time).split(".")[0]
+    else:
+        load_time = ""
+    unload_time = t[4]
+    if unload_time is not None:
+        unload_time = str(unload_time).split(".")[0]
+    else:
+        unload_time = ""
+    return [req_id, asset_tag, description, src, dest, load_time, unload_time]
+
 
 def convert_date(date):
     # Currently only supports yyyy-mm-dd (hh:mm:ss) format

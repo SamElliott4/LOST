@@ -1,0 +1,65 @@
+<html lang=en>
+{% include 'styles.html' %}
+<head>
+<style>
+</style>
+</head>
+
+{% include 'header.html' %}
+{% include 'alert.html' %}
+
+<body class=base>
+	<a id=dashbtn href={{url_for('dashboard')}}>Return to Dashboard</a><br>
+	<div>
+		<table class=report>
+			<tr>
+				<th>Request Number</th>
+				<th>Asset Tag</th>
+				<th>Description</th>
+				<th>Source</th>
+				<th>Destination</th>
+				<th></th>
+				<th></th>
+			</tr>
+			<tr>
+				<td>{{session['req'][0]}}</td>
+				<td>{{session['req'][1]}}</td>
+				<td>{{session['req'][2]}}</td>
+				<td>{{session['req'][3]}}</td>
+				<td>{{session['req'][4]}}</td>
+				<td><form action="" method="POST" style=display:inline>
+					<input type=submit name=action value=Approve>
+				</form></td>
+				<td><form action="" method="POST" style=display:inline>
+					<input type=submit name=action value=Reject>
+				</form></td>
+			</tr>
+		</table>
+	</div>
+
+	<br><br><br>
+	{% if session['conflicts'] %}
+	<div class=container>
+		<b style=float:left>The following requests will be automatically rejected if the above request is approved</b><br>
+		<table class=report>
+			<tr>
+				<th>Request Number</th>
+				<th>Asset Tag</th>
+				<th>Description</th>
+				<th>Source</th>
+				<th>Destination</th>
+			</tr>
+			{% for r in session['conflicts'] %}
+			<tr>
+				<td>{{r[0]}}</td>
+				<td>{{r[1]}}</td>
+				<td>{{r[2]}}</td>
+				<td>{{r[3]}}</td>
+				<td>{{r[4]}}</td>
+			</tr>
+			{% endfor %}
+		</table>
+	</div>
+	{% endif %}
+
+</body>

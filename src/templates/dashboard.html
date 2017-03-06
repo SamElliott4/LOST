@@ -43,19 +43,86 @@ button {padding: 10px;}
 
 {% include "header.html" %}
 	<body class=base>
-		<div style="border-top:2px solid black; border-bottom:2px solid #444">
+		<div style="border-top:2px solid #333; border-bottom:2px solid #333">
 		<ul>
 			<li><a>Welcome, {{session['username']}}</a></li>
 			<li><a></a></li>
 			{% for c in session['tasks'] %}
 			<li><a class="link" href={{c[1]}}>{{c[0]}}</a></li>
 			{% endfor %}
-			<li><a class="link" href={{url_for('asset_report')}}>asset report</a></li>
+			<li><a class="link" href={{url_for('asset_report')}}>Asset Report</a></li>
 			<form action="{{url_for('logout')}}" method="GET"><button style="float:right" class="btn navbar-btn" href="{{url_for('logout')}}">Log out</button></form>
 		</ul>
 		</div>
 
-	</body>
 	{% include 'alert.html' %}
+	<br><br><br>
+	<b style=fontsize:25px>Items requiring your attention:</b><br>
+	{% if 'pending_requests' in session %}
+	<div class=container>
+		<b>Pending Tranfer Requests</b>
+		<table class=report>
+			<tr>
+				<th>Request Number</th>
+				<th>Asset Tag</th>
+				<th>Description</th>
+				<th>Source Facility</th>
+				<th>Destination</th>
+				<th>Request Date</th>
+				<th></th>
+			</tr>
+			{% for r in session['pending_requests'] %}
+			<tr>
+				<td>{{r[0]}}</td>
+				<td>{{r[1]}}</td>
+				<td>{{r[2]}}</td>
+				<td>{{r[3]}}</td>
+				<td>{{r[4]}}</td>
+				<td>{{r[5]}}</td>
+				<td><form action={{url_for('approve_req')}} method='GET' style=display:inline>
+					<input type=text name="req_id" value={{r[0]}} style=display:none readonly>
+					<input type=submit value=Approve>
+				</form></td>
+			</tr>
+			{% endfor %}
+		</table>
+
+	</div><br>
+	{% endif %}
+	{% if 'pending_transfers' in session %}
+	<div class=container>
+		<b>Approved Transfers</b>
+		<table class=report>
+			<tr>
+				<th style=width:160px>Request Number</th>
+				<th>Asset Tag</th>
+				<th>Description</th>
+				<th>Origin</th>
+				<th>Destination</th>
+				<th style=width:200px>Load Time</th>
+				<th style=width:200px>Unload Time</th>
+				<th></th>
+			</tr>
+			{% for t in session['pending_transfers'] %}
+			<tr>
+				<td>{{t[0]}}</td>
+				<td>{{t[1]}}</td>
+				<td>{{t[2]}}</td>
+				<td>{{t[3]}}</td>
+				<td>{{t[4]}}</td>
+				<td>{{t[5]}}</td>
+				<td>{{t[6]}}</td>
+				<td><form action={{url_for('update_transit')}} method='GET' style=display:inline>
+					<input type=text value={{t[0]}} name=req_id style=display:none readonly>
+					<input type=submit value="Update Tracking">
+				</form></td>
+			</tr>
+			{% endfor %}
+		</table>
+	</div>
+	{% endif %}
+
+	</body>
+
 
 </html>

@@ -1,0 +1,56 @@
+<html lang=en>
+{% include 'styles.html' %}
+<head>
+<style>
+</style>
+</head>
+
+{% include 'header.html' %}
+{% include 'alert.html' %}
+
+<body class=base>
+	<a id=dashbtn href={{url_for('dashboard')}}>Return to Dashboard</a><br>
+	<div class=container>
+		<b style=fontsize:30>Assets</b>
+		<table class=report>
+			<tr>
+				<th>Asset Tag</th>
+				<th>Description</th>
+				<th>Facility</th>
+				<th>Intake Date</th>
+				<th>Expunge Date</th>
+				<th>Status</th>
+			</tr>
+			{% for a in session['assets'] %}
+			<tr>
+				<td>{{a[0]}}</td>
+				<td>{{a[1]}}</td>
+				<td>{{a[2]}}</td>
+				<td>{{a[3]}}</td>
+				<td>{{a[4]}}</td>
+				<td>{{a[5]}}</td>
+			</tr>
+			{% endfor %}
+		</table>
+	</div><br>
+	<div class=input>
+		<form action="" method="POST">
+			<label>Asset: </label>
+			<select name="asset_tag">
+				{% for a in session['assets']%}
+				<option>{{a[0]}}</option>
+				{% endfor %}
+			</select>
+			<label>Destination Facility: </label>
+			<select name="dest">
+				{% for f in session['facilities'] %}
+				<option>{{f}}</option>
+				{% endfor %}
+			</select>
+			<input type=submit style="float:right" value="Make Request">
+		</form>
+	</div>
+
+</body>
+
+</html>

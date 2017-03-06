@@ -1,0 +1,54 @@
+<html lang=en>
+{% include 'styles.html' %}
+<head>
+<style>
+</style>
+</head>
+{% include 'header.html' %}
+
+<body class=base>
+	<a id=dashbtn href={{url_for('dashboard')}}>Return to Dashboard</a><br>
+	<div>
+		<table class=report>
+			<tr>
+				<th>Request Number</th>
+				<th>Asset Tag</th>
+				<th>Description</th>
+				<th>Origin</th>
+				<th>Destination</th>
+				<th style=width:200px>Load Time</th>
+				<th style=width:200px>Unload Time</th>
+				<th></th>
+			</tr>
+			<tr>
+				<td>{{session['transit'][0]}}</td>
+				<td>{{session['transit'][1]}}</td>
+				<td>{{session['transit'][2]}}</td>
+				<td>{{session['transit'][3]}}</td>
+				<td>{{session['transit'][4]}}</td>
+				<td>
+					{% if not session['transit'][5] %}
+					<input form="update" name="load_time" type=text placeholder="yyyy-mm-dd hh:mm:ss">
+					{% else %}
+					<input form="update" type=text value="{{session['transit'][5]}}" disabled>
+					{% endif %}
+				</td>
+				<td>
+					{% if session['transit'][5] %}
+					<input form="update" name=unload_time type=text placeholder="yyyy-mm-dd hh:mm:ss">
+					{% else %}
+					<input form="update" type=text value="{{session['transit'][6]}}" disabled>
+					{% endif %}
+				</td>
+				<td><form id="update" action={{url_for('update_transit')}} method="POST" style=display:inline>	
+					<input type=submit form="update" value="Update Tracking">
+				</form></td>
+			</tr>
+		</table>
+	</div>
+</body>
+
+</html>
+
+
+
