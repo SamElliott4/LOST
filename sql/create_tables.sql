@@ -21,7 +21,7 @@ CREATE TABLE users(
 	username varchar(16), -- Case-sensitive username
 	password varchar(64), -- 256-bit hash used, 64 characters converted to hex
 	role_fk integer REFERENCES roles (role_pk),
-	active boolean
+	active boolean  -- Reflects wether or not a user is allowed to log in
 );
 
 CREATE TABLE assets(
@@ -46,23 +46,24 @@ CREATE TABLE asset_at(
 	expunge_dt timestamp -- time of assets removal from associated facility
 );
 
+-- requests for asset transfer; only contains data about the request, not about the transfer itself
 CREATE TABLE transfer_requests(
-	request_id varchar(16) UNIQUE,
-	requester varchar(16) references users(user_id),
-	request_dt timestamp,
-	src integer references facilities(facility_pk),
-	dest integer references facilities(facility_pk),
-	asset_fk integer references assets(asset_pk),
-	approver varchar(16) references users(user_id),
-	approve_dt timestamp,
+	request_id varchar(16) UNIQUE, -- used to join transfer_request and asset_moving tables
+	requester varchar(16) references users(user_id), -- Logistics officer that requested the transfer
+	request_dt timestamp, -- time of request
+	src integer references facilities(facility_pk), -- where the asset is currently located
+	dest integer references facilities(facility_pk), -- where the asset would be transfered to
+	asset_fk integer references assets(asset_pk), -- the asset to be moved
+	approver varchar(16) references users(user_id), -- Facilities Officer that approved (or rejected) the request
+	approve_dt timestamp, -- time of approval/rejection
 	status integer -- 0: pending, 1: approved, -1: rejected
 );
 
 CREATE TABLE asset_moving(
 	request_id varchar(16) references transfer_requests(request_id),
-	asset_fk integer references assets(asset_pk),
-	src integer references facilities(facility_pk),
-	dest integer references facilities(facility_pk),
-	load_dt timestamp,
-	unload_dt timestamp
+	asset_fk integer references assets(asset_pk), -- asset being transfered
+	src integer references facilities(facility_pk), -- where from
+	dest integer references facilities(facility_pk), -- where to
+	load_dt timestamp, -- when the asset left src facility
+	unload_dt timestamp -- when the asset reached dest facility
 );

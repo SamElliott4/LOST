@@ -58,7 +58,7 @@ def get_asset_data():
 def get_transfer_data():
     global path, cur
     cur.execute("""SELECT asset_tag, requester, request_dt, approver, approve_dt, t.src, t.dest, t.request_id
-            FROM transfer_requests t JOIN assets a ON t.asset_fk=a.asset_pk;""")
+            FROM transfer_requests t JOIN assets a ON t.asset_fk=a.asset_pk WHERE t.status>=0;""")
     transfers = [{'asset_tag': i[0],
                 'request_by': i[1],
                 'request_dt': i[2],
