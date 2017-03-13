@@ -38,7 +38,7 @@ def create_user():
         else:
             send_alert('Username already exists', 'warning')
             return redirect(url_for('create_user'))
-    cur.execute("SELECT title FROM roles;")
+    cur.execute("SELECT role FROM roles;")
     session['roles'] = cur.fetchall()
     return render_template("create_user.html")
 
@@ -163,7 +163,6 @@ def transfer_req():
     session['assets'] = get_assets()
     for i in range(len(session['assets'])):
         if session['assets'][i][5] != 'Active':
-            print("hit")
             session['assets'][i] = None
     while None in session['assets']:
         session['assets'].remove(None)
@@ -239,7 +238,7 @@ def transfer_report():
         return redirect(url_for('login'))
     if request.method == 'POST':
         pass
-    return render_tamplate('transfer_report.html')
+    return render_template('transfer_report.html')
 
 @app.route('/logout', methods=['GET'])
 def logout():
@@ -267,7 +266,7 @@ def compare_password(username, password):
     pword = cur.fetchone()
     if pword is None:
         return False
-    if pword[0] == h_pass:
+    if pword[0] == password:
         return True
     return False
 
@@ -277,10 +276,10 @@ def add_user(username, password, role):
         return False
     user_id = username.lower()
     h_pass = get_hash(password)
-    role_fk = get_key('roles', 'title', role)
+    role_fk = get_key('roles', 'role', role)
     try:
-        cur.execute("""INSERT INTO users (user_id, username, password, role_fk) 
-                VALUES (%s, %s, %s, %s);""",[user_id, username, h_pass, role_fk])
+        cur.execute("""INSERT INTO users (user_id, username, password, role_fk, active) 
+                VALUES (%s, %s, %s, %s, %s);""",[user_id, username, password, role_fk, True])
     except:
         db.rollback()
         return False
@@ -307,7 +306,7 @@ def add_asset(asset_tag, description, fcode, date):
         asset_key = get_key('assets', 'asset_tag', asset_tag) #cur.fetchone()[0]
         fac_key = get_key('facilities', 'f_code', fcode) #cur.fetchone()[0]
         # New row in asset_at table
-        cur.execute("""INSERT INTO asset_at (asset_fk, facility_fk, intake_date) 
+        cur.execute("""INSERT INTO asset_at (asset_fk, facility_fk, intake_dt) 
                 VALUES (%s, %s, %s);""", (asset_key, fac_key, date))
     except:
         db.rollback()
@@ -327,7 +326,7 @@ def dispose_asset(asset_tag, datetime):
         # Update necessary information
         # Facility information needs to remain intact for historical reference
         cur.execute("UPDATE assets SET status=0 WHERE asset_tag=%s;", (asset_tag,))
-        cur.execute("UPDATE asset_at SET expunge_date=%s WHERE asset_fk=%s;", (datetime, asset_key))
+        cur.execute("UPDATE asset_at SET expunge_dt=%s WHERE asset_fk=%s;", (datetime, asset_key))
     except:
         db.rollback()
         return False
@@ -340,7 +339,7 @@ def make_transfer_request(username, asset_tag, destination, date):
     cur.execute("""SELECT facility_pk, f_code FROM facilities 
             JOIN asset_at ON facility_pk=facility_fk 
             JOIN assets ON asset_fk=asset_pk 
-            WHERE asset_tag=%s AND expunge_date IS NULL;""", (asset_tag,))
+            WHERE asset_tag=%s AND expunge_dt IS NULL;""", (asset_tag,))
     src, src_code = cur.fetchone()
     cur.execute("SELECT facility_pk FROM facilities WHERE f_code=%s;", (destination,))
     dest = cur.fetchone()[0]
@@ -350,7 +349,7 @@ def make_transfer_request(username, asset_tag, destination, date):
     cur.execute("SELECT * FROM transfer_requests;")
     req_num = len(cur.fetchall()) + 1
     try:
-        cur.execute("""INSERT INTO transfer_requests (request_id, requester, asset_fk, src, dest, request_time, status) 
+        cur.execute("""INSERT INTO transfer_requests (request_id, requester, asset_fk, src, dest, request_dt, status) 
                 VALUES (%s, %s, %s, %s, %s, %s, 0);""", (src_code + str(req_num), user, asset_key, src, dest, date))
     except:
         db.rollback()
@@ -363,7 +362,7 @@ def approve_transfer_request(req_id, username, date):
     cur.execute("SELECT asset_fk, src, dest FROM transfer_requests WHERE request_id=%s;", (req_id,))
     asset_key, src, dest = cur.fetchone()
     try:
-        cur.execute("UPDATE transfer_requests SET approver=%s, approve_time=%s, status=1 WHERE request_id=%s;", (user, date, req_id))
+        cur.execute("UPDATE transfer_requests SET approver=%s, approve_dt=%s, status=1 WHERE request_id=%s;", (user, date, req_id))
         cur.execute("INSERT INTO asset_moving (request_id, asset_fk, src, dest) VALUES (%s, %s, %s, %s);", (req_id, asset_key, src, dest))
     except:
         db.rollback()
@@ -374,7 +373,7 @@ def approve_transfer_request(req_id, username, date):
 def reject_transfer_request(req_id, username, date):
     user = get_key('users', 'username', username)
     try:
-        cur.execute("UPDATE transfer_requests SET approver=%s, approve_time=%s, status=-1 WHERE request_id=%s;", (user, date, req_id))
+        cur.execute("UPDATE transfer_requests SET approver=%s, approve_dt=%s, status=-1 WHERE request_id=%s;", (user, date, req_id))
     except:
         db.rollback()
         return False
@@ -386,9 +385,9 @@ def update_transit(req_id, load_time=None, unload_time=None):
     asset_key = cur.fetchone()[0]
     if load_time is not None:
         try:
-            cur.execute("UPDATE asset_moving SET load_time=%s WHERE request_id=%s;", (load_time, req_id))
+            cur.execute("UPDATE asset_moving SET load_dt=%s WHERE request_id=%s;", (load_time, req_id))
             cur.execute("UPDATE assets SET status=2 WHERE asset_pk=%s;", (asset_key,))
-            cur.execute("UPDATE asset_at SET expunge_date=%s WHERE asset_fk=%s AND expunge_date IS NULL;", (load_time, asset_key))
+            cur.execute("UPDATE asset_at SET expunge_dt=%s WHERE asset_fk=%s AND expunge_dt IS NULL;", (load_time, asset_key))
         except:
             db.rollback()
             return False
@@ -396,9 +395,9 @@ def update_transit(req_id, load_time=None, unload_time=None):
         cur.execute("SELECT dest FROM asset_moving WHERE request_id=%s;", (req_id,))
         fac_key = cur.fetchone()[0]
         try:
-            cur.execute("UPDATE asset_moving SET unload_time=%s WHERE request_id=%s;", (unload_time, req_id))
+            cur.execute("UPDATE asset_moving SET unload_dt=%s WHERE request_id=%s;", (unload_time, req_id))
             cur.execute("UPDATE assets SET status=1 WHERE asset_pk=%s;", (asset_key,))
-            cur.execute("INSERT INTO asset_at (asset_fk, facility_fk, intake_date) VALUES (%s, %s, %s);", (asset_key, fac_key, unload_time))
+            cur.execute("INSERT INTO asset_at (asset_fk, facility_fk, intake_dt) VALUES (%s, %s, %s);", (asset_key, fac_key, unload_time))
         except:
             db.rollback()
             return False
@@ -411,7 +410,7 @@ def get_assets():
     cur.execute("SELECT asset_pk FROM assets WHERE status>0;")
     asset_list = [a[0] for a in cur.fetchall()]
     for a in asset_list: # We only want one row for each asset
-        cur.execute("""SELECT asset_tag, description, f_code, intake_date, expunge_date, status FROM assets
+        cur.execute("""SELECT asset_tag, description, f_code, intake_dt, expunge_dt, status FROM assets
                 JOIN asset_at ON asset_pk=asset_fk
                 JOIN facilities ON facility_fk=facility_pk
                 WHERE asset_pk=%s;""", (a,))
@@ -436,12 +435,12 @@ def filter_assets(fcode, date):
     dt = date.split("T")
     dt = dt[0] + "T23:59:59"
     print(dt)
-    cur.execute("""SELECT asset_tag, description, f_code, intake_date, expunge_date, status FROM assets 
+    cur.execute("""SELECT asset_tag, description, f_code, intake_dt, expunge_dt, status FROM assets 
             JOIN asset_at ON asset_pk=asset_fk 
             JOIN facilities on facility_fk=facility_pk 
             WHERE f_code like %s 
-            AND intake_date <= %s 
-            AND (expunge_date is null OR NOT expunge_date < %s)
+            AND intake_dt <= %s 
+            AND (expunge_dt is null OR NOT expunge_dt < %s)
             ;""", (fcode+'%', dt, date))
     assets = [[a[0], a[1], a[2], a[3], a[4], a[5]] for a in cur.fetchall()]
     for a in assets:
@@ -470,7 +469,7 @@ def get_capabilities(username):
 
 def has_authority(username, action):
     # returns True if a user is able to perform a given action, False, otherwise
-    cur.execute("SELECT capability_pk FROM capabilities WHERE name=%s;",(action,))
+    cur.execute("SELECT capability_pk FROM capabilities WHERE capability=%s;",(action,))
     output = cur.fetchone()
     # avoid index error if query returned None
     action_key = output[0] if output != None else None
@@ -484,7 +483,7 @@ def populate_dashboard():
         return
     # set users role
     username = session['username']
-    cur.execute("""SELECT title FROM roles JOIN users on role_pk=role_fk 
+    cur.execute("""SELECT role FROM roles JOIN users on role_pk=role_fk 
             WHERE user_id=%s;""", (username.lower(),))
     session['role'] = cur.fetchone()[0]
     # build task set
@@ -502,8 +501,8 @@ def populate_dashboard():
     }
     pending = []
     for i in cap_list:
-        # add tuple of (name, route) for each capability
-        cur.execute("SELECT name FROM capabilities WHERE capability_pk=%s ;",(i,))
+        # add tuple of (capability, route) for each capability
+        cur.execute("SELECT capability FROM capabilities WHERE capability_pk=%s ;",(i,))
         c = cur.fetchone()[0]
         if c in capabilities:
             session['tasks'].append((c, capabilities[c]))
@@ -519,7 +518,7 @@ def populate_dashboard():
         if a == 'Update Transit':
             session['pending_transfers'] = []
             cur.execute("""SELECT request_id FROM asset_moving
-                    WHERE load_time IS NULL OR unload_time IS NULL""")
+                    WHERE load_dt IS NULL OR unload_dt IS NULL""")
             for r in cur.fetchall():
                 if r[0]:
                     session['pending_transfers'].append(get_transfer_info(r[0]))
@@ -543,7 +542,7 @@ def get_key(table, field, value):
     return key
 
 def get_request_info(req_id):
-    cur.execute("SELECT request_id, asset_fk, src, dest, request_time FROM transfer_requests WHERE request_id=%s;", (req_id,))
+    cur.execute("SELECT request_id, asset_fk, src, dest, request_dt FROM transfer_requests WHERE request_id=%s;", (req_id,))
     req = cur.fetchone()
     cur.execute("SELECT asset_tag, description FROM assets WHERE asset_pk=%s;", (req[1],))
     asset_tag, description = cur.fetchone()
@@ -555,7 +554,7 @@ def get_request_info(req_id):
     return [req[0], asset_tag, description, src, dest, dt[0]]
 
 def get_transfer_info(req_id):
-    cur.execute("SELECT asset_fk, src, dest, load_time, unload_time FROM asset_moving WHERE request_id=%s;", (req_id,))
+    cur.execute("SELECT asset_fk, src, dest, load_dt, unload_dt FROM asset_moving WHERE request_id=%s;", (req_id,))
     t = cur.fetchone()
     cur.execute("SELECT asset_tag, description FROM assets WHERE asset_pk=%s;", (t[0],))
     asset_tag, description = cur.fetchone()
@@ -564,17 +563,17 @@ def get_transfer_info(req_id):
     cur.execute("SELECT f_code FROM facilities WHERE facility_pk=%s;", (t[2],))
     dest = cur.fetchone()[0]
     # Trim displayed time of anything smaller than seconds
-    load_time = t[3]
-    if load_time is not None:
-        load_time = str(load_time).split(".")[0]
+    load_dt = t[3]
+    if load_dt is not None:
+        load_dt = str(load_dt).split(".")[0]
     else:
-        load_time = ""
-    unload_time = t[4]
-    if unload_time is not None:
-        unload_time = str(unload_time).split(".")[0]
+        load_dt = ""
+    unload_dt = t[4]
+    if unload_dt is not None:
+        unload_dt = str(unload_dt).split(".")[0]
     else:
-        unload_time = ""
-    return [req_id, asset_tag, description, src, dest, load_time, unload_time]
+        unload_dt = ""
+    return [req_id, asset_tag, description, src, dest, load_dt, unload_dt]
 
 
 def convert_date(date):

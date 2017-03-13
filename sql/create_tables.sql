@@ -2,12 +2,12 @@
 
 CREATE TABLE roles(
 	role_pk serial primary key,
-	title varchar(32) --Name of the role, e.g. 'Facility Officer'
+	role varchar(32) --Name of the role, e.g. 'Facility Officer'
 );
 
 CREATE TABLE capabilities(
 	capability_pk serial primary key,
-	name varchar(32) -- Name of the function, e.g. 'add asset' or 'dispose asset'
+	capability varchar(32) -- Name of the function, e.g. 'Add Asset' or 'Dispose Asset'
 );
 
 -- joins roles and capabilities tables
@@ -20,7 +20,8 @@ CREATE TABLE users(
 	user_id varchar(16) UNIQUE, -- all-lowercase version of username; this will function as the primary key
 	username varchar(16), -- Case-sensitive username
 	password varchar(64), -- 256-bit hash used, 64 characters converted to hex
-	role_fk integer REFERENCES roles (role_pk)
+	role_fk integer REFERENCES roles (role_pk),
+	active boolean
 );
 
 CREATE TABLE assets(
@@ -41,19 +42,19 @@ CREATE TABLE facilities(
 CREATE TABLE asset_at(
 	asset_fk integer REFERENCES assets (asset_pk),
 	facility_fk integer REFERENCES facilities (facility_pk),
-	intake_date timestamp, -- time of arrival of asset to associated facility
-	expunge_date timestamp -- time of assets removal from associated facility
+	intake_dt timestamp, -- time of arrival of asset to associated facility
+	expunge_dt timestamp -- time of assets removal from associated facility
 );
 
 CREATE TABLE transfer_requests(
 	request_id varchar(16) UNIQUE,
 	requester varchar(16) references users(user_id),
-	request_time timestamp,
+	request_dt timestamp,
 	src integer references facilities(facility_pk),
 	dest integer references facilities(facility_pk),
 	asset_fk integer references assets(asset_pk),
 	approver varchar(16) references users(user_id),
-	approve_time timestamp,
+	approve_dt timestamp,
 	status integer -- 0: pending, 1: approved, -1: rejected
 );
 
@@ -62,6 +63,6 @@ CREATE TABLE asset_moving(
 	asset_fk integer references assets(asset_pk),
 	src integer references facilities(facility_pk),
 	dest integer references facilities(facility_pk),
-	load_time timestamp,
-	unload_time timestamp
+	load_dt timestamp,
+	unload_dt timestamp
 );
