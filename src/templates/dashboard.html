@@ -27,7 +27,7 @@ li a {
 	display: block;
 	color: #333;
 	text-align: center;
-	padding: 10px 15px;
+	padding: 10px 12px;
 	text-decoration: none;
 }
 
@@ -51,6 +51,7 @@ button {padding: 10px;}
 			<li><a class="link" href={{c[1]}}>{{c[0]}}</a></li>
 			{% endfor %}
 			<li><a class="link" href={{url_for('asset_report')}}>Asset Report</a></li>
+			<li><a class="link" href={{url_for('transfer_report')}}>Transfer Report</a></li>
 			<form action="{{url_for('logout')}}" method="GET"><button style="float:right" class="btn navbar-btn" href="{{url_for('logout')}}">Log out</button></form>
 		</ul>
 		</div>

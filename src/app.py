@@ -195,11 +195,18 @@ def approve_req():
     session['req_id'] = request.args.get('req_id', '')
     # get info for approval form
     session['req'] = get_request_info(session['req_id'])
-    # get conflicting request info
+    # reject all other pending requests for this asset
     session['conflicts'] = []
     cur.execute("""SELECT request_id FROM transfer_requests
             JOIN assets on asset_fk=asset_pk
             WHERE asset_tag=%s AND request_id!=%s AND approver IS NULL;""", (session['req'][1], session['req_id']))
+    for r in cur.fetchall():
+        session['conflicts'].append(get_request_info(r[0]))
+    # replace previous requests not yet used
+    cur.execute("""SELECT t.request_id FROM transfer_requests t
+            JOIN asset_moving m on t.request_id = m.request_id
+            JOIN assets a ON t.asset_fk = a.asset_pk
+            WHERE m.load_dt IS NULL AND a.asset_tag=%s AND t.request_id!=%s;""", (session['req'][1], session['req_id']))
     for r in cur.fetchall():
         session['conflicts'].append(get_request_info(r[0]))
     return render_template('approve_req.html')
@@ -237,7 +244,16 @@ def transfer_report():
         send_alert('You are not logged in', 'warning')
         return redirect(url_for('login'))
     if request.method == 'POST':
-        pass
+        if request.form['date'] != "":
+            dt = convert_date(request.form['date'])
+            # Handle rejected time format
+            if dt is None:
+                send_alert('Unrecognized date format', 'warning')
+                return redirect(request.path)
+        else:
+            dt = datetime.datetime.utcnow().isoformat()
+        session['transfer_report'] = filter_transfers(dt)
+        return redirect(url_for('transfer_report'))
     return render_template('transfer_report.html')
 
 @app.route('/logout', methods=['GET'])
@@ -374,6 +390,8 @@ def reject_transfer_request(req_id, username, date):
     user = get_key('users', 'username', username)
     try:
         cur.execute("UPDATE transfer_requests SET approver=%s, approve_dt=%s, status=-1 WHERE request_id=%s;", (user, date, req_id))
+        # Remove any canceled requests from asset_moving table
+        cur.execute("DELETE FROM asset_moving WHERE request_id=%s;", (req_id,))
     except:
         db.rollback()
         return False
@@ -434,7 +452,6 @@ def filter_assets(fcode, date):
     # Fix date to properly include assets taken in on the selected day
     dt = date.split("T")
     dt = dt[0] + "T23:59:59"
-    print(dt)
     cur.execute("""SELECT asset_tag, description, f_code, intake_dt, expunge_dt, status FROM assets 
             JOIN asset_at ON asset_pk=asset_fk 
             JOIN facilities on facility_fk=facility_pk 
@@ -453,6 +470,24 @@ def filter_assets(fcode, date):
         a[5] = status[a[5]]
     return assets
 
+def filter_transfers(date):
+    # returns a list of assets in transit on a given day.
+    dt = date.split("T")
+    dt = dt[0] + "T23:59:59"
+    cur.execute("""SELECT asset_tag, description, src, dest, load_dt, unload_dt FROM asset_moving
+            JOIN assets ON asset_fk=asset_pk
+            WHERE load_dt <= %s AND (unload_dt IS NULL OR NOT unload_dt < %s);""", (dt, date))
+    assets = [[a[0], a[1], a[2], a[3], a[4], a[5]] for a in cur.fetchall()]
+    for a in assets:
+        # fetch fcodes for origin and destination
+        cur.execute("SELECT f_code FROM facilities WHERE facility_pk=%s;", (a[2],))
+        a[2] = cur.fetchone()[0]
+        cur.execute("SELECT f_code FROM facilities WHERE facility_pk=%s;", (a[3],))
+        a[3] = cur.fetchone()[0]
+        # strip <second units from timestamp, if any; if entry is NULL, replace with empty string
+        a[4] = str(a[4]).split(".")[0] if a[4] is not None else ""
+        a[5] = str(a[5]).split(".")[0] if a[5] is not None else ""
+    return assets
 
 def verify_user():
     # Returns False if no user is logged in, True otherwise

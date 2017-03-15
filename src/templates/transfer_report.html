@@ -1,0 +1,46 @@
+<html lang=en>
+{% include 'styles.html' %}
+<head>
+<style>
+
+</style>
+</head>
+
+{% include 'header.html' %}
+{% include 'alert.html' %}
+
+<body class=base>
+<div>
+	<a id=dashbtn href={{url_for('dashboard')}}>Return to Dashboard</a><br><br>
+	<div class=input>
+		<form action="" method="POST">
+			<label>Date: </label>
+			<input type=text name=date placeholder='yyyy-mm-dd' required>
+			<input type=submit value="Filter Transfers" style=float:right>
+		</form>
+	</div>
+	<div class=container>
+		<b style=font-size:30px>Assets in Transit</b>
+		<table class=report>
+			<tr>
+				<th>Asset Tag</th>
+				<th>Description</th>
+				<th>Origin</th>
+				<th>Destination</th>
+				<th>Load Time</th>
+				<th>Unload Time</th>
+			</tr>
+			{% for a in session['transfer_report'] %}
+			<tr>
+				<td>{{a[0]}}</td>
+				<td>{{a[1]}}</td>
+				<td>{{a[2]}}</td>
+				<td>{{a[3]}}</td>
+				<td>{{a[4]}}</td>
+				<td>{{a[5]}}</td>
+			</tr>
+			{% endfor %}
+		</table>
+	</div>
+</div>
+</body>
