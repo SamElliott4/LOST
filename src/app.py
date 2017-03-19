@@ -20,7 +20,7 @@ cur = db.cursor()
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method=='POST':
-        if compare_password(request.form['username'], request.form['password']): # false if username does not exist or username and password do not match
+        if check_credentials(request.form['username'], request.form['password']): # false if username does not exist or username and password do not match
             session['username'] = get_username(request.form['username']) # Use capitalization found in database, i.e. when user was created
             return redirect(url_for('dashboard'))
         else:
@@ -31,16 +31,28 @@ def login():
 @app.route('/create_user', methods=['GET', 'POST'])
 def create_user():
     if request.method=='POST':
-        # add_user checks for existing usernames, aborts and returns false if one is found
-        if add_user(request.form['username'], request.form['password'], request.form['role']):
-            send_alert('Successfully created new user', 'success')
-            return redirect(url_for('login'))    
+        if user_exists(request.form['username']):
+            if update_user(request.form['username'], request.form['password']):
+                return "Updated credentials for user: {}".format(request.form['username'])
+            else:
+                return "User exists, but credentials could not be updated"
         else:
-            send_alert('Username already exists', 'warning')
-            return redirect(url_for('create_user'))
-    cur.execute("SELECT role FROM roles;")
-    session['roles'] = cur.fetchall()
-    return render_template("create_user.html")
+            if add_user(request.form['username'], request.form['password'], request.form['role']):
+                return "Created new user: {}".format(request.form['username'])  
+            else:
+                return "Unable to create new user"
+    return redirect(url_for('login')) # I'd rather redirect away instead of crashing if a person navigates here in a browser
+
+@app.route('/revoke_user', methods=['GET','POST'])
+def revoke_user():
+    if request.method == 'POST':
+        if not user_exists(request.form['username']):
+            return 'User does not exist'
+        if deactivate_user(request.form['username']):
+            return "Successfully deactivated user: {}".format(request.form['username'])
+        else:
+            return "User does not exist"
+    return redirect(url_for('login'))
 
 @app.route('/dashboard', methods=['GET'])
 def dashboard():
@@ -239,7 +251,6 @@ def update_transit():
 
 @app.route('/transfer_report', methods=['GET', 'POST'])
 def transfer_report():
-    #TODO
     if not verify_user():
         send_alert('You are not logged in', 'warning')
         return redirect(url_for('login'))
@@ -275,14 +286,17 @@ def user_exists(username):
     # Returns True is user exists, False otherwise
     return get_username(username) is not None
 
-def compare_password(username, password):
-    # returns true if username and password match, false otherwise
-    h_pass = get_hash(password)
-    cur.execute("SELECT password FROM users WHERE user_id=%s;", [username.lower(),])
-    pword = cur.fetchone()
-    if pword is None:
+def check_credentials(username, password):
+    # returns true if user is able to log in
+    # False if user is inactive
+    # False if user entered incorrect credentials
+    cur.execute("SELECT password, active FROM users WHERE user_id=%s;", [username.lower(),])
+    cred = cur.fetchone()
+    if cred is None: # No users with given username
         return False
-    if pword[0] == password:
+    if not cred[1]: # User is inactive
+        return False
+    if cred[0] == password: # Passwords match
         return True
     return False
 
@@ -296,6 +310,26 @@ def add_user(username, password, role):
     try:
         cur.execute("""INSERT INTO users (user_id, username, password, role_fk, active) 
                 VALUES (%s, %s, %s, %s, %s);""",[user_id, username, password, role_fk, True])
+    except:
+        db.rollback()
+        return False
+    db.commit()
+    return True
+
+def deactivate_user(username):
+    user_id = username.lower()
+    try:
+        cur.execute("UPDATE users SET active=%s WHERE user_id=%s;", (False, user_id))
+    except:
+        db.rollback()
+        return False
+    db.commit()
+    return True
+
+def update_user(username, password):
+    user_id = username.lower()
+    try:
+        cur.execute("UPDATE users SET password=%s, active=%s WHERE user_id=%s;", (password, True, user_id))
     except:
         db.rollback()
         return False
@@ -492,6 +526,7 @@ def filter_transfers(date):
 def verify_user():
     # Returns False if no user is logged in, True otherwise
     if 'username' not in session:
+        session['clear'] # If no user, we don't want any other info either
         return False
     return True
 
