@@ -27,7 +27,7 @@ def main():
     req = Request(sys.argv[1] + 'create_user', data.encode('ascii'), method='POST')
     res = urlopen(req)
 
-    # Print the result to stdout
+    # Print the response to stdout
     print(res.read().decode('ascii'))
 
 if __name__ == '__main__':

@@ -33,12 +33,12 @@ def create_user():
     if request.method=='POST':
         if user_exists(request.form['username']):
             if update_user(request.form['username'], request.form['password']):
-                return "Updated credentials for user: {}".format(request.form['username'])
+                return "Updated credentials for user: {}".format(get_username(request.form['username']))
             else:
                 return "User exists, but credentials could not be updated"
         else:
             if add_user(request.form['username'], request.form['password'], request.form['role']):
-                return "Created new user: {}".format(request.form['username'])  
+                return "Created new user: {}".format(get_username(request.form['username']))  
             else:
                 return "Unable to create new user"
     return redirect(url_for('login')) # I'd rather redirect away instead of crashing if a person navigates here in a browser
@@ -49,7 +49,7 @@ def revoke_user():
         if not user_exists(request.form['username']):
             return 'User does not exist'
         if deactivate_user(request.form['username']):
-            return "Successfully deactivated user: {}".format(request.form['username'])
+            return "Successfully deactivated user: {}".format(get_username(request.form['username']))
         else:
             return "User does not exist"
     return redirect(url_for('login'))
@@ -317,6 +317,8 @@ def add_user(username, password, role):
     return True
 
 def deactivate_user(username):
+    # returns true if user is successfully deactivated, false otherwise
+    # also returns true if there is no matching user
     user_id = username.lower()
     try:
         cur.execute("UPDATE users SET active=%s WHERE user_id=%s;", (False, user_id))
@@ -327,6 +329,7 @@ def deactivate_user(username):
     return True
 
 def update_user(username, password):
+    # Returns true if user credentials are updated, or if there is no matching user
     user_id = username.lower()
     try:
         cur.execute("UPDATE users SET password=%s, active=%s WHERE user_id=%s;", (password, True, user_id))

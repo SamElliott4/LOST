@@ -14,7 +14,7 @@ def main():
     args = {'username': sys.argv[2]}
     data = urlencode(args)
 
-    # Make the request
+    # Make the request to the webservice
     req = Request(sys.argv[1] + 'revoke_user', data.encode('ascii'), method='POST')
     res = urlopen(req)
 
