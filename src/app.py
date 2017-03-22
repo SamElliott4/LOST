@@ -529,8 +529,17 @@ def filter_transfers(date):
 def verify_user():
     # Returns False if no user is logged in, True otherwise
     if 'username' not in session:
-        session['clear'] # If no user, we don't want any other info either
+        session.clear() # If no user, we don't want any other info either
         return False
+    else:
+        cur.execute("SELECT active FROM users WHERE user_id=%s;", (session['username'].lower(),))
+        user = cur.fetchone()
+        if user == None:
+            session.clear()
+            return False
+        elif not user[0]:
+            session.clear()
+            return False
     return True
 
 def get_capabilities(username):
